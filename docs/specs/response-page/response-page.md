@@ -37,7 +37,7 @@ The response page displays a message explaining that there has been an error.
 
 ## Fallback answer
 
-In case of an error, the response page offers a fallback "mailto:" link. This link contains the user's (response owner's) email address, response text, subject, and campaign name, so that the respondent can quickly send their reply over email.
+In case of an error, the response page offers a fallback `mailto:` link. This opens the respondent's own email client with a pre-filled draft — the application does not send the message. The link contains the response owner's email address, response text, subject, and campaign name.
 
 ## Backend answer processing
 
@@ -45,7 +45,7 @@ Once an answer has been successfully registered, it is processed at the backend 
 
 1. If `record_answers` is specified and the campaign is non-empty, the answer gets stored in the Firestore. It can be later accessed through the [campaigns page](../settings/campaigns.md). For clarity, if the campaign is empty (loose buttons), skip Firestore storage.
 
-2. If `forward_answers` is specified OR the campaign is empty (loose buttons), 1CR sends an email via Gmail API to the owner that lists:
+2. If `forward_answers` is specified OR the campaign is empty (loose buttons), 1CR sends an email via Gmail API **from the application** to the account owner that lists:
 - Recipients
 - Answer text
 - Campaign data if available

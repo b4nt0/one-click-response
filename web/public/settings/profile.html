@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — 1CR</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Profile</h1>
+
+    <div id="auth-gate" class="card">
+      <p>Please <a href="/settings/">sign in</a> to view your profile.</p>
+    </div>
+
+    <div id="main" class="hidden">
+      <nav class="nav">
+        <a href="/settings/campaigns.html">Campaigns</a>
+        <a href="/settings/profile.html" class="active">Profile</a>
+        <a href="#" id="sign-out-link">Sign out</a>
+      </nav>
+
+      <div class="card">
+        <h2>Account</h2>
+        <p>Email: <strong id="user-email"></strong></p>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>Encryption key</h2>
+        <p class="muted">
+          Your encryption key protects response links. Rotating it will invalidate all
+          previously inserted response buttons in unsent emails.
+        </p>
+        <button id="rotate-key-btn" class="btn btn-danger">Rotate encryption key</button>
+        <p id="rotate-status" class="muted hidden" style="margin-top:12px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/profile.js"></script>
+</body>
+</html>

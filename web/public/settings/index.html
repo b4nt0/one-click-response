@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — 1CR</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>One-click Response</h1>
+    <p class="muted">Manage campaigns and profile settings.</p>
+
+    <div id="auth-section" class="card">
+      <p>Sign in with Google to manage your campaigns.</p>
+      <button id="sign-in-btn" class="btn btn-primary">Sign in with Google</button>
+    </div>
+
+    <div id="app-section" class="hidden">
+      <nav class="nav">
+        <a href="/settings/campaigns.html" class="active">Campaigns</a>
+        <a href="/settings/profile.html">Profile</a>
+        <a href="#" id="sign-out-link">Sign out</a>
+      </nav>
+      <div class="card">
+        <h2>Welcome</h2>
+        <p>Signed in as <strong id="user-email"></strong></p>
+        <p><a href="/settings/campaigns.html" class="btn btn-primary">Manage campaigns</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    OneClickAuth.onAuthChange((user) => {
+      document.getElementById("auth-section").classList.toggle("hidden", !!user);
+      document.getElementById("app-section").classList.toggle("hidden", !user);
+      if (user) document.getElementById("user-email").textContent = user.email;
+    });
+    document.getElementById("sign-in-btn").addEventListener("click", () => OneClickAuth.signIn());
+    document.getElementById("sign-out-link").addEventListener("click", (e) => {
+      e.preventDefault();
+      OneClickAuth.signOut();
+    });
+  </script>
+</body>
+</html>

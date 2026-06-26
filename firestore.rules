@@ -1,0 +1,44 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+
+    match /campaigns/{campaignId} {
+      allow read, create, update, delete: if isSignedIn()
+        && resource == null
+          ? request.resource.data.user_id == request.auth.uid
+          : resource.data.user_id == request.auth.uid;
+    }
+
+    match /response_buttons/{buttonId} {
+      allow read, create, update, delete: if isSignedIn()
+        && (
+          (resource == null && request.resource.data.user_id == request.auth.uid)
+          || (resource != null && resource.data.user_id == request.auth.uid)
+          || (resource == null && request.resource.data.campaign_id != null)
+          || (resource != null && resource.data.campaign_id != null
+              && get(/databases/$(database)/documents/campaigns/$(resource.data.campaign_id)).data.user_id == request.auth.uid)
+        );
+    }
+
+    match /responses/{responseId} {
+      allow read, write: if false;
+    }
+
+    match /deduplication/{emailId} {
+      allow read, write: if false;
+    }
+  }
+}

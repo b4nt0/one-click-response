@@ -1,0 +1,15 @@
+functions/venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.coverage
+.firebase
+**/htmlcov/
+firebase-debug.log
+emulator-data/
+.DS_Store
+*.pyc
+.env
+.env.*
+.clasp.json
+

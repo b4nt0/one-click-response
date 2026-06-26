@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm response — 1CR</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div id="loading" class="card spinner">Loading…</div>
+
+    <div id="confirm-view" class="card hidden">
+      <h1>Confirm your response</h1>
+      <p class="muted" id="subject-line"></p>
+      <p>You selected: <strong id="button-text"></strong></p>
+      <p id="campaign-line" class="muted hidden"></p>
+      <div class="actions">
+        <button id="confirm-btn" class="btn btn-primary">Confirm response</button>
+      </div>
+    </div>
+
+    <div id="success-view" class="card hidden">
+      <div class="alert alert-success">
+        <h1>Thank you!</h1>
+        <p>Your response has been recorded.</p>
+        <p class="muted">This tab will close automatically. You may also close it manually.</p>
+      </div>
+    </div>
+
+    <div id="duplicate-view" class="card hidden">
+      <div class="alert alert-error">
+        <h1>Already submitted</h1>
+        <p>Your answer could not be registered because a response has already been submitted for this email.</p>
+      </div>
+    </div>
+
+    <div id="error-view" class="card hidden">
+      <div class="alert alert-error">
+        <h1>Something went wrong</h1>
+        <p id="error-message">There was an error registering your response.</p>
+      </div>
+      <p>You can still reply by email using your own mail client:</p>
+      <a id="mailto-link" class="btn btn-secondary" href="#">Open draft in your email app</a>
+    </div>
+  </div>
+
+  <script src="/js/response.js"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campaigns — 1CR</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Campaigns</h1>
+
+    <div id="auth-gate" class="card">
+      <p>Please <a href="/settings/">sign in</a> to manage campaigns.</p>
+    </div>
+
+    <div id="main" class="hidden">
+      <nav class="nav">
+        <a href="/settings/campaigns.html" class="active">Campaigns</a>
+        <a href="/settings/profile.html">Profile</a>
+        <a href="#" id="sign-out-link">Sign out</a>
+      </nav>
+
+      <div id="list-view">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="margin:0;">Your campaigns</h2>
+            <button id="new-campaign-btn" class="btn btn-primary">New campaign</button>
+          </div>
+          <div id="campaigns-list"></div>
+        </div>
+      </div>
+
+      <div id="detail-view" class="hidden">
+        <button id="back-btn" class="btn btn-secondary" style="margin-bottom:16px;">← Back</button>
+        <div class="card">
+          <h2 id="detail-title"></h2>
+          <form id="campaign-form">
+            <div class="form-group">
+              <label for="campaign-name">Name</label>
+              <input type="text" id="campaign-name" required>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="record-answers"> Record answers
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="forward-answers"> Forward answers via email
+              </label>
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn btn-primary">Save</button>
+              <button type="button" id="delete-campaign-btn" class="btn btn-danger">Delete</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h2>Response buttons</h2>
+          <div id="buttons-list"></div>
+          <form id="add-button-form" class="actions">
+            <input type="text" id="new-button-text" placeholder="Button text" required style="flex:1;">
+            <button type="submit" class="btn btn-primary">Add button</button>
+          </form>
+        </div>
+
+        <div id="responses-section" class="card hidden" style="margin-top:16px;">
+          <h2>Recorded responses</h2>
+          <table>
+            <thead>
+              <tr><th>Answer</th><th>Recipient</th><th>Subject</th><th>Date</th></tr>
+            </thead>
+            <tbody id="responses-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="create-view" class="hidden">
+        <button id="create-back-btn" class="btn btn-secondary" style="margin-bottom:16px;">← Back</button>
+        <div class="card">
+          <h2>New campaign</h2>
+          <form id="create-campaign-form">
+            <div class="form-group">
+              <label for="new-campaign-name">Name</label>
+              <input type="text" id="new-campaign-name" required>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="new-record-answers"> Record answers
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="new-forward-answers"> Forward answers via email
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary">Create</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/campaigns.js"></script>
+</body>
+</html>
