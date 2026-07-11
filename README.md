@@ -9,7 +9,7 @@ The act of clicking the button would:
 
 The full product specifications are in [the specs folder](./docs/specs/).
 
-Installation and deployment: [docs/installing](./docs/installing/README.md). Local development: [docs/development](./docs/development/README.md).
+Installation and deployment: [docs/installing](./docs/installing/INSTALL.md). Local development: [docs/development](./docs/development/CONTRIBUTING.md).
 
 The license is [in the LICENSE file](./LICENSE).
 
