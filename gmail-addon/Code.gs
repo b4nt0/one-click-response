@@ -240,7 +240,7 @@ function insertResponseBlock(e) {
       .setUpdateDraftBodyAction(
         CardService.newUpdateDraftBodyAction()
           .addUpdateContent(html, CardService.ContentType.MUTABLE_HTML)
-          .setUpdateType(CardService.UpdateDraftBodyType.INSERT_AT_END)
+          .setUpdateType(CardService.UpdateDraftBodyType.IN_PLACE_INSERT)
       )
       .build();
   } catch (err) {

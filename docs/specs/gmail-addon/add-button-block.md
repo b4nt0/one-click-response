@@ -51,3 +51,7 @@ To mitigate both risks, the user interface:
 - Displays the current recipient list and a confirmation box that clarifies that the inserted options will be bound to the recipients as listed
 
 There will be no option to update the recipients list after a change. To accommodate for the new recipients, the user must manually delete the previous response block and add a new one.
+
+## Insertion point
+
+The add-on inserts the response buttons at the current cursor position.
