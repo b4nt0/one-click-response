@@ -183,3 +183,44 @@ def test_register_loose_button_forwards(
         subject="Loose",
         campaign_name=None,
     )
+
+
+@patch("src.services.responses.get_db")
+def test_register_inline_button_text_forwards(mock_db, mock_user, sample_key):
+    payload = LinkPayload(
+        version=1,
+        email_id="email-inline",
+        subject="Inline",
+        recipients=["bob@example.com"],
+        response_button_id="btn-inline",
+        campaign_id=None,
+        owner_user_id="user-1",
+        button_text="Custom",
+    )
+
+    dedup_repo = MagicMock()
+    dedup_repo.get_response_received.return_value = False
+    mock_db.return_value.transaction.return_value = MagicMock()
+    gmail = MagicMock()
+
+    service = ResponsesService(
+        user_repo=MagicMock(get=MagicMock(return_value=mock_user)),
+        button_repo=MagicMock(get=MagicMock(return_value=None)),
+        campaign_repo=MagicMock(),
+        dedup_repo=dedup_repo,
+        gmail_client=gmail,
+    )
+
+    token = _make_token(payload, sample_key)
+
+    with patch("src.services.responses.firestore.transactional", lambda fn: fn):
+        result = service.register(token, confirmed=True)
+
+    assert result.button_text == "Custom"
+    gmail.send_notification.assert_called_once_with(
+        mock_user.email,
+        recipients="bob@example.com",
+        answer_text="Custom",
+        subject="Inline",
+        campaign_name=None,
+    )

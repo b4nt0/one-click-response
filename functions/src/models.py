@@ -140,9 +140,10 @@ class LinkPayload:
     response_button_id: str
     campaign_id: str | None
     owner_user_id: str
+    button_text: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "v": self.version,
             "email_id": self.email_id,
             "subject": self.subject,
@@ -151,6 +152,9 @@ class LinkPayload:
             "campaign_id": self.campaign_id,
             "owner_user_id": self.owner_user_id,
         }
+        if self.button_text is not None:
+            result["button_text"] = self.button_text
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> LinkPayload:
@@ -162,6 +166,7 @@ class LinkPayload:
             response_button_id=data["response_button_id"],
             campaign_id=data.get("campaign_id"),
             owner_user_id=data["owner_user_id"],
+            button_text=data.get("button_text"),
         )
 
 

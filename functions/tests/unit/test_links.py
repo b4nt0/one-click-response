@@ -129,3 +129,46 @@ def test_create_links_uses_host_url_override(mock_resolve_host, mock_user, mock_
     )
 
     mock_resolve_host.assert_called_once_with("https://one-click-response.web.app")
+
+
+@patch("src.services.links.config.resolve_public_host_url", return_value="https://example.com")
+def test_create_links_accepts_inline_button_text(mock_resolve_host, mock_user):
+    user_svc = MagicMock()
+    user_svc.get_or_create.return_value = mock_user
+
+    service = LinksService(
+        user_service=user_svc,
+        button_repo=MagicMock(),
+        campaign_repo=MagicMock(),
+        dedup_repo=MagicMock(),
+    )
+
+    result = service.create_links(
+        "user-1",
+        "owner@example.com",
+        subject="Quick poll",
+        recipients=["guest@example.com"],
+        buttons=[{"text": " Yes "}, {"text": "No"}],
+        email_id="email-inline",
+    )
+
+    assert result["email_id"] == "email-inline"
+    assert len(result["links"]) == 2
+    assert result["links"][0]["text"] == "Yes"
+    assert result["links"][1]["text"] == "No"
+    assert "Yes" in result["html"]
+    assert "No" in result["html"]
+
+
+def test_resolve_button_requires_id_or_text():
+    service = LinksService(
+        user_service=MagicMock(),
+        button_repo=MagicMock(),
+        campaign_repo=MagicMock(),
+        dedup_repo=MagicMock(),
+    )
+
+    with pytest.raises(AppError) as exc:
+        service._resolve_button("user-1", {})
+
+    assert "response_button_id or text" in exc.value.message

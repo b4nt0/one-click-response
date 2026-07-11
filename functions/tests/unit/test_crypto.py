@@ -14,6 +14,22 @@ def test_generate_encryption_key_length():
     assert len(key) > 0
 
 
+def test_encrypt_decrypt_round_trip_with_button_text(sample_key):
+    payload = LinkPayload(
+        version=1,
+        email_id="email-1",
+        subject="Hello",
+        recipients=["a@x.com"],
+        response_button_id="btn-1",
+        campaign_id=None,
+        owner_user_id="user-1",
+        button_text="Maybe",
+    )
+    token = encrypt_payload(payload, sample_key)
+    restored = decrypt_payload(token, sample_key)
+    assert restored.button_text == "Maybe"
+
+
 def test_encrypt_decrypt_round_trip(sample_key):
     payload = LinkPayload(
         version=1,

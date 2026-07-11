@@ -8,6 +8,9 @@
 
 var API_BASE_URL = PropertiesService.getScriptProperties().getProperty('API_BASE_URL') || 'http://localhost:5000';
 
+/** Sentinel campaign id for comma-separated in-place button captions. */
+var IN_PLACE_CAMPAIGN_ID = '__in_place__';
+
 /** Must match oauthScopes in appsscript.json (use action.compose, not message.compose). */
 var ADDON_OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/gmail.addons.execute',
@@ -76,7 +79,14 @@ function buildComposeCard(e) {
   var recipients = getRecipients(draft);
   var subject = (draft && draft.subject) ? draft.subject : '';
 
-  if (!draft) {
+  if (!recipients.length && e.parameters && e.parameters.recipients) {
+    recipients = e.parameters.recipients.split(',').filter(function (r) { return r; });
+  }
+  if (!subject && e.parameters && e.parameters.subject) {
+    subject = e.parameters.subject;
+  }
+
+  if (!draft && !recipients.length) {
     return CardService.newCardBuilder()
       .setHeader(CardService.newCardHeader().setTitle('One-click Response'))
       .addSection(
@@ -122,10 +132,16 @@ function buildComposeCard(e) {
       )
     );
 
-    var campaignInput = CardService.newSelectionInput()
-      .setType(CardService.SelectionInputType.DROPDOWN)
-      .setFieldName('campaignId')
-      .addItem('— Select campaign —', '', true);
+    var selectedCampaignId = (e.formInput && e.formInput.campaignId) || '';
+    var campaignInput = buildCampaignDropdown(selectedCampaignId);
+    campaignInput.setOnChangeAction(
+      CardService.newAction()
+        .setFunctionName('onCampaignSelected')
+        .setParameters({
+          subject: subject,
+          recipients: recipients.join(','),
+        })
+    );
 
     var backendAuthUrl = getBackendAuthorizationUrl();
     if (backendAuthUrl) {
@@ -139,9 +155,8 @@ function buildComposeCard(e) {
       try {
         var campaigns = fetchCampaigns();
         campaigns.forEach(function (c) {
-          campaignInput.addItem(c.name, c.id, false);
+          campaignInput.addItem(c.name, c.id, c.id === selectedCampaignId);
         });
-        section.addWidget(campaignInput);
       } catch (err) {
         if (isUrlFetchPermissionError(err.message || String(err))) {
           var retryAuthUrl = getBackendAuthorizationUrl();
@@ -162,6 +177,18 @@ function buildComposeCard(e) {
             )
           );
         }
+      }
+
+      section.addWidget(campaignInput);
+
+      if (selectedCampaignId === IN_PLACE_CAMPAIGN_ID) {
+        section.addWidget(
+          CardService.newTextInput()
+            .setFieldName('buttonCaptions')
+            .setTitle('Button captions')
+            .setHint('Comma-separated, e.g. Yes, No, Maybe')
+            .setValue((e.formInput && e.formInput.buttonCaptions) || '')
+        );
       }
     }
 
@@ -192,6 +219,30 @@ function buildComposeCard(e) {
 }
 
 /**
+ * Rebuild compose card when campaign selection changes (shows in-place caption field).
+ */
+function onCampaignSelected(e) {
+  return CardService.newActionResponseBuilder()
+    .setNavigation(CardService.newNavigation().updateCard(buildComposeCard(e)))
+    .build();
+}
+
+function buildCampaignDropdown(selectedCampaignId) {
+  return CardService.newSelectionInput()
+    .setType(CardService.SelectionInputType.DROPDOWN)
+    .setFieldName('campaignId')
+    .addItem('— Select campaign —', '', selectedCampaignId === '')
+    .addItem('— Add buttons in-place —', IN_PLACE_CAMPAIGN_ID, selectedCampaignId === IN_PLACE_CAMPAIGN_ID);
+}
+
+function parseButtonCaptions(raw) {
+  if (!raw) {
+    return [];
+  }
+  return raw.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s; });
+}
+
+/**
  * Insert response block into compose body.
  */
 function insertResponseBlock(e) {
@@ -207,7 +258,7 @@ function insertResponseBlock(e) {
 
   var campaignId = form.campaignId;
   if (!campaignId) {
-    return notifyCard('Please select a campaign.');
+    return notifyCard('Please select a campaign or add buttons in-place.');
   }
 
   var recipients = (params.recipients || '').split(',').filter(function (r) { return r; });
@@ -216,9 +267,23 @@ function insertResponseBlock(e) {
   }
 
   try {
-    var buttons = fetchCampaignButtons(campaignId);
-    if (!buttons.length) {
-      return notifyCard('This campaign has no response buttons. Add buttons in settings.');
+    var linkButtons;
+    if (campaignId === IN_PLACE_CAMPAIGN_ID) {
+      var captions = parseButtonCaptions(form.buttonCaptions);
+      if (!captions.length) {
+        return notifyCard('Enter at least one button caption (comma-separated).');
+      }
+      linkButtons = captions.map(function (text) {
+        return { text: text };
+      });
+    } else {
+      var buttons = fetchCampaignButtons(campaignId);
+      if (!buttons.length) {
+        return notifyCard('This campaign has no response buttons. Add buttons in settings.');
+      }
+      linkButtons = buttons.map(function (b) {
+        return { response_button_id: b.id };
+      });
     }
 
     var emailId = Utilities.getUuid();
@@ -227,9 +292,7 @@ function insertResponseBlock(e) {
       recipients: recipients,
       email_id: emailId,
       host_url: API_BASE_URL.replace(/\/$/, ''),
-      buttons: buttons.map(function (b) {
-        return { response_button_id: b.id };
-      }),
+      buttons: linkButtons,
     };
 
     var result = apiPost('/api/links', payload);

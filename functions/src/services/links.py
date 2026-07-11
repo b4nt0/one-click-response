@@ -57,7 +57,7 @@ class LinksService:
 
         links = []
         for item in buttons:
-            button = self._resolve_button(uid, item)
+            button, inline_text = self._resolve_button(uid, item)
             campaign_id = button.campaign_id
             payload = LinkPayload(
                 version=1,
@@ -67,6 +67,7 @@ class LinksService:
                 response_button_id=button.id,
                 campaign_id=campaign_id,
                 owner_user_id=user.id,
+                button_text=inline_text,
             )
             ciphertext = encrypt_payload(payload, user.encryption_key)
             token = f"{user.id}.{ciphertext}"
@@ -76,23 +77,34 @@ class LinksService:
         html_block = self._render_html_block(links)
         return {"email_id": email_id, "links": links, "html": html_block}
 
-    def _resolve_button(self, uid: str, item: dict) -> ResponseButton:
+    def _resolve_button(self, uid: str, item: dict) -> tuple[ResponseButton, str | None]:
         button_id = item.get("response_button_id")
-        if not button_id:
-            raise AppError("response_button_id is required for each button.")
+        if button_id:
+            button = self.button_repo.get(button_id)
+            if not button:
+                raise AppError(f"Response button {button_id} not found.", status_code=404)
 
-        button = self.button_repo.get(button_id)
-        if not button:
-            raise AppError(f"Response button {button_id} not found.", status_code=404)
-
-        if button.campaign_id:
-            campaign = self.campaign_repo.get(button.campaign_id)
-            if not campaign or campaign.user_id != uid:
+            if button.campaign_id:
+                campaign = self.campaign_repo.get(button.campaign_id)
+                if not campaign or campaign.user_id != uid:
+                    raise AppError("Unauthorized access to response button.", status_code=403)
+            elif button.user_id != uid:
                 raise AppError("Unauthorized access to response button.", status_code=403)
-        elif button.user_id != uid:
-            raise AppError("Unauthorized access to response button.", status_code=403)
 
-        return button
+            return button, None
+
+        text = (item.get("text") or "").strip()
+        if not text:
+            raise AppError("Each button must have response_button_id or text.")
+
+        return (
+            ResponseButton(
+                id=str(uuid.uuid4()),
+                text=text,
+                user_id=uid,
+            ),
+            text,
+        )
 
     @staticmethod
     def _render_html_block(links: list[dict]) -> str:

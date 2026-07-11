@@ -18,8 +18,11 @@
 ## Insert flow
 
 - [ ] Selecting a campaign and inserting adds HTML block to email body
+- [ ] Selecting "— Add buttons in-place —" shows caption input field
+- [ ] Comma-separated captions create loose buttons in the email body
 - [ ] Each button has a unique link with encrypted parameter
 - [ ] Campaign with no buttons shows an error notification
+- [ ] Empty in-place captions show an error notification
 
 ## Response flow
 

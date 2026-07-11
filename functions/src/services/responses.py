@@ -9,7 +9,7 @@ from google.cloud import firestore
 
 from src.crypto import decrypt_payload
 from src.gmail_client import GmailClient
-from src.models import AppError, DuplicateError, Response
+from src.models import AppError, DuplicateError, Response, ResponseButton
 from src.repositories.campaigns import CampaignRepository
 from src.repositories.db import get_db
 from src.repositories.response_buttons import ResponseButtonRepository
@@ -135,7 +135,14 @@ class ResponsesService:
 
         button = self.button_repo.get(payload.response_button_id)
         if not button:
-            raise AppError("Response button not found.", status_code=404)
+            if payload.button_text:
+                button = ResponseButton(
+                    id=payload.response_button_id,
+                    text=payload.button_text,
+                    user_id=payload.owner_user_id,
+                )
+            else:
+                raise AppError("Response button not found.", status_code=404)
 
         campaign = None
         if payload.campaign_id:
