@@ -53,7 +53,24 @@ def test_create_links_returns_html(mock_resolve_host, mock_user, mock_button, mo
     assert len(result["links"]) == 1
     assert "https://example.com/r/?p=" in result["links"][0]["url"]
     assert "Yes" in result["html"]
+    assert "Quick response" not in result["html"]
     dedup_repo.seed.assert_called_once_with("email-abc")
+
+
+def test_render_html_block_layout():
+    html = LinksService._render_html_block(
+        [
+            {"text": "Yes", "url": "https://example.com/r/?p=token1"},
+            {"text": "No", "url": "https://example.com/r/?p=token2"},
+        ]
+    )
+
+    assert "Quick response" not in html
+    assert html.count("<a ") == 2
+    assert "display:inline-block" in html
+    assert "border:1px solid #dadce0" in html
+    assert "background-color:#1a73e8" in html
+    assert "color:#ffffff" in html
 
 
 @patch.dict("os.environ", {"HOST_URL": "http://"}, clear=False)

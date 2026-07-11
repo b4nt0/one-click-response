@@ -96,16 +96,17 @@ class LinksService:
 
     @staticmethod
     def _render_html_block(links: list[dict]) -> str:
-        parts = ['<div style="margin:16px 0;padding:12px;border:1px solid #ddd;border-radius:8px;">']
-        parts.append("<p><strong>Quick response:</strong></p>")
+        button_style = (
+            "display:inline-block;padding:8px 16px;margin:4px;"
+            "background-color:#1a73e8;border:1px solid #1557b0;color:#ffffff;"
+            "text-decoration:none;border-radius:4px;"
+        )
+        parts = [
+            '<div style="margin:16px 0;padding:12px;border:1px solid #dadce0;border-radius:8px;">'
+        ]
         for link in links:
             text = html.escape(link["text"])
             url = html.escape(link["url"])
-            parts.append(
-                f'<p><a href="{url}" '
-                f'style="display:inline-block;padding:8px 16px;margin:4px;'
-                f'background:#1a73e8;color:#fff;text-decoration:none;border-radius:4px;">'
-                f"{text}</a></p>"
-            )
+            parts.append(f'<a href="{url}" style="{button_style}">{text}</a>')
         parts.append("</div>")
         return "\n".join(parts)
