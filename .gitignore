@@ -6,6 +6,7 @@ functions/venv/
 .firebase
 **/htmlcov/
 firebase-debug.log
+firestore-debug.log
 emulator-data/
 .DS_Store
 *.pyc
