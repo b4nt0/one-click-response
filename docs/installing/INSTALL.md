@@ -4,7 +4,7 @@ This guide walks through deploying One-click Response (1CR) to your own Firebase
 
 ## Prerequisites
 
-- A [Google Cloud](https://console.cloud.google.com/) / [Firebase](https://console.firebase.google.com/) account with billing enabled (Cloud Functions require the Blaze plan)
+- A [Google Cloud](https://console.cloud.google.com/) / [Firebase](https://console.firebase.google.com/) account
 - [Node.js](https://nodejs.org/) 20+ (for Firebase CLI and clasp)
 - [Python](https://www.python.org/) 3.13+
 - [Git](https://git-scm.com/)
@@ -19,7 +19,7 @@ This guide walks through deploying One-click Response (1CR) to your own Firebase
 | Frontend     | Static HTML/JS on Firebase Hosting | `firebase deploy --only hosting`   |
 | Gmail add-on | Google Apps Script                 | `clasp push`                       |
 
-All three surfaces share one Firebase Hosting URL. API requests to `/api/**` are routed to the Cloud Function; static pages are served from `web/public/`.
+Both API and the website share one Firebase Hosting URL. API requests to `/api/**` are routed to the Cloud Function; static pages are served from `web/public/`.
 
 ---
 
@@ -27,17 +27,16 @@ All three surfaces share one Firebase Hosting URL. API requests to `/api/**` are
 
 1. Open the [Firebase console](https://console.firebase.google.com/) and click **Add project**.
 2. Choose a project ID (e.g. `my-1cr-app`). This ID is used throughout configuration.
-3. Upgrade the project to the **Blaze (pay as you go)** plan — required for Cloud Functions.
-4. In the project, enable:
+3. In the project, enable:
    - **Authentication** → Sign-in method → **Google** (enable)
-   - **Firestore Database** → Create database (start in production mode; rules are deployed from this repo). Note the **location** you choose (e.g. `nam5` multi-region, or `europe-west1`).
+   - **Firestore Database** → Create database (start in production mode). Note the location you choose (e.g. `nam5` multi-region, or `europe-west1`).
    - **Hosting** (enable when prompted during first deploy)
 
 [`firebase.json`](../../firebase.json) must declare the Firestore database name and location. The default config uses `"database": "(default)"` and `"location": "nam5"`. If you created Firestore in a different region, update `location` to match (see [Firestore locations](https://firebase.google.com/docs/firestore/locations)).
 
 ### Link the local repo to your project
 
-Edit [`.firebaserc`](../../.firebaserc) and replace the default project ID:
+Edit [`.firebaserc`](../../.firebaserc) and replace the default project ID with the one that you used on the Firebase project creation step:
 
 ```json
 {
@@ -45,12 +44,6 @@ Edit [`.firebaserc`](../../.firebaserc) and replace the default project ID:
     "default": "my-1cr-app"
   }
 }
-```
-
-Or set it from the CLI:
-
-```bash
-firebase use --add
 ```
 
 ### Install Firebase CLI
@@ -64,119 +57,78 @@ firebase login
 
 ## 2. Configure Google OAuth and Gmail API
 
-### Firebase’s auto-created OAuth client (sign-in)
+### Enable authentication
 
-When you enable **Google** under **Authentication** → **Sign-in method**, Firebase automatically creates an OAuth 2.0 web client in the linked Google Cloud project. You will see it in [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials** as something like **Web client (auto created by Google Service)**.
+1. In the [Firebase console](https://console.firebase.google.com/), open your project → **Authentication** → **Sign-in method** → enable **Google**.
 
-That client is **already connected to Firebase Authentication**. You do not paste its secret into this repository. Firebase keeps the secret on Google’s side and uses it during the sign-in flow. Your frontend only needs the Firebase web app config in [`web/public/js/config.js`](../../web/public/js/config.js) (`apiKey`, `projectId`, etc.) — see [Finding your web app config](#finding-your-web-app-config) below. You do **not** need the OAuth client secret for the frontend.
+Firebase creates an OAuth web client in the linked Google Cloud project automatically. You do not need to create one for sign-in.
 
-The **Web client ID** is visible in Firebase console → **Authentication** → **Sign-in method** → **Google** (expand the provider). The original **client secret** for auto-created clients is not viewable after creation — that is expected.
+2. Add hosting domains under **Authentication** → **Settings** → **Authorized domains** (Firebase adds `*.web.app` and `*.firebaseapp.com` after the first Hosting deploy; add `localhost` if you use the emulator). If you don't know where your web app will end up, you can add the correct URL later, after deployment.
 
-**For sign-in alone**, you can stop here: enable Google in Firebase Auth, set `config.js`, and add your hosting domains under **Authentication** → **Settings** → **Authorized domains**.
+3. Get your Firebase web app config:
+   1. Firebase console → gear icon → **Project settings** → **General** tab.
+   2. Scroll to **Your apps**. If there is no **Web** app (`</>`), click **Add app** → **Web** → register it.
+   3. In the **SDK setup and configuration** select **Config**
+   4. Copy the `firebaseConfig` object (`apiKey`, `authDomain`, `projectId`, etc.).
 
-### When you also need the client secret (Gmail forwarding)
+4. Paste the values into [`web/public/js/config.js`](../../web/public/js/config.js):
 
-The backend uses `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and `GMAIL_REFRESH_TOKEN` (Cloud Functions secrets) to send answer-forwarding notifications **from the application** to each account owner. End users never grant Gmail send permission — only the application operator configures a dedicated sender account.
+   ```javascript
+   window.FIREBASE_CONFIG = {
+     apiKey: "...",
+     authDomain: "my-1cr-app.firebaseapp.com",
+     projectId: "my-1cr-app",
+     storageBucket: "my-1cr-app.appspot.com",
+     messagingSenderId: "...",
+     appId: "...",
+   };
+   ```
 
-You have two options for the OAuth client:
+5. (Optional) Confirm the OAuth client exists: [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials** → **Web client (auto created by Google Service)**. You will reuse its **Client ID** in [Enable sending mail](#enable-sending-mail).
 
-#### Option A — New secret on the existing auto-created client (simplest)
+### Enable sending mail
 
-1. In Google Cloud Console → **Credentials**, open **Web client (auto created by Google Service)**.
-2. Click **Add secret** (or create a new client secret). **Copy the new secret immediately** — Google only shows it once.
-3. Note the **Client ID** shown on the same page.
-4. In Firebase console → **Authentication** → **Sign-in method** → **Google**, open the provider and ensure the **Web client ID** matches that Client ID. If you ever replaced the default, paste the same Client ID and the **new** secret here.
-5. Store the same values as Cloud Functions secrets (see [Deploy the backend](#3-deploy-the-backend)):
-   - `GMAIL_CLIENT_ID` = that Client ID
-   - `GMAIL_CLIENT_SECRET` = the new secret you just created
+1. Open [Google Cloud Console](https://console.cloud.google.com/) for your Firebase project.
 
-#### Option B — Separate OAuth web application
+2. Enable **Gmail API**: **APIs & Services** → **Library** → search **Gmail API** → **Enable**.
 
-Create a dedicated **Web application** client if you prefer not to touch the auto-created one:
+3. Open the OAuth client: **APIs & Services** → **Credentials** → **Web client (auto created by Google Service)**.
 
-1. Enable **Gmail API** under **APIs & Services** → **Library**.
-2. **Credentials** → **Create credentials** → **OAuth client ID** → **Web application**.
-3. Add authorized JavaScript origins:
-   - `https://my-1cr-app.web.app`
-   - `https://my-1cr-app.firebaseapp.com`
-   - `http://localhost:5000` (local emulator hosting)
-4. Add authorized redirect URIs from Firebase Auth (e.g. `https://my-1cr-app.firebaseapp.com/__/auth/handler`).
-5. Copy the new **Client ID** and **Client secret**.
-6. In Firebase → **Authentication** → **Google**, set **Web client ID** and **Web client secret** to those values (replacing the default).
-7. Set the same ID and secret as `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET` in Cloud Functions.
+4. Add a client secret:
+   1. Click **Add secret**.
+   2. **Copy the secret immediately** — Google shows it only once.
+   3. Copy the **Client ID** from the same page.
 
-### Application sender account
+   The new secret is used to send emails.
 
-Forwarding notifications are sent **from** a Gmail account you control (the application owner) **to** the signed-in user's email. Obtain a long-lived refresh token for that sender account once:
-
-1. Create or choose a Gmail account to send notifications (e.g. `notifications@yourdomain.com`).
-2. Complete a one-time OAuth consent flow with `https://www.googleapis.com/auth/gmail.send` for that account, using the same OAuth client as above (see below).
-3. Store the refresh token as the `GMAIL_REFRESH_TOKEN` secret and set `GMAIL_SENDER_EMAIL` to that account's address:
+5. Store the credentials as Cloud Functions secrets (full deploy steps in [Deploy the backend](#3-deploy-the-backend)):
 
    ```bash
-   firebase functions:secrets:set GMAIL_REFRESH_TOKEN
-   firebase functions:secrets:set GMAIL_SENDER_EMAIL
+   firebase functions:secrets:set GMAIL_CLIENT_ID      # Client ID from step 4
+   firebase functions:secrets:set GMAIL_CLIENT_SECRET  # new secret from step 4
    ```
 
-Users signing in via the web settings page only need standard Google sign-in — no Gmail scopes.
+6. Get a refresh token for your sender Gmail account (e.g. `notifications@yourdomain.com`):
 
-#### Obtain the refresh token (OAuth 2.0 Playground)
+   **In the OAuth client (see step 3):**
+   - Add authorized redirect URI: `https://developers.google.com/oauthplayground`
+   - On **OAuth consent screen**, add the sender address as a **Test user** if the app is in Testing mode.
 
-The easiest way to get a refresh token is [Google's OAuth 2.0 Playground](https://developers.google.com/oauthplayground/).
+   **In [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/):**
+   1. Gear icon → check **Use your own OAuth credentials** → paste Client ID and Client secret.
+   2. **Step 1** — enter scope `https://www.googleapis.com/auth/gmail.send` → **Authorize APIs**.
+   3. Sign in with the **sender account** → approve.
+   4. **Step 2** — **Exchange authorization code for tokens**.
+   5. Copy the **`refresh_token`** (not `access_token`).
 
-**Before you start:**
+7. Set the remaining secrets:
 
-- **Gmail API** is enabled in your Google Cloud project (see Option B above if you have not done this yet).
-- You have your OAuth **Client ID** and **Client secret** (the same values you set as `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET`).
-- On that OAuth client, add this **Authorized redirect URI**:
-  - `https://developers.google.com/oauthplayground`
-- On the **OAuth consent screen**, add your sender Gmail address as a **Test user** if the app is still in *Testing* mode.
-
-**Steps:**
-
-1. Open [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/).
-2. Click the **gear icon** (top right) and check **Use your own OAuth credentials**.
-3. Paste your **Client ID** and **Client secret**, then close the settings panel.
-4. In **Step 1 — Select & authorize APIs**, enter this scope in the input box at the bottom:
-
-   ```
-   https://www.googleapis.com/auth/gmail.send
+   ```bash
+   firebase functions:secrets:set GMAIL_REFRESH_TOKEN  # refresh token from step 6
+   firebase functions:secrets:set GMAIL_SENDER_EMAIL   # sender address
    ```
 
-   Click **Authorize APIs**.
-5. Sign in with the **sender account** (e.g. `notifications@yourdomain.com`) — not your personal admin account unless that is the sender.
-6. Approve the permission request.
-7. In **Step 2 — Exchange authorization code for tokens**, click **Exchange authorization code for tokens**.
-8. Copy the **`refresh_token`** value from the response (not the `access_token`).
-
-**Notes:**
-
-- If no `refresh_token` appears, revoke the app's access at [Google Account → Third-party access](https://myaccount.google.com/permissions) and repeat the flow. Signing in fresh after revoke usually fixes a missing refresh token.
-- While the OAuth app is in **Testing** mode, refresh tokens can expire after 7 days unless the sender account is a test user or you publish the consent screen. For production, publish the consent screen or keep the sender on the test-user list.
-- The refresh token is tied to the OAuth client ID — use the same client you configured as `GMAIL_CLIENT_ID`.
-
-**Verify (optional):** After deploying, trigger a response with `forward_answers` enabled. You should receive a notification **from** `GMAIL_SENDER_EMAIL` **to** the campaign owner's address.
-
-### Summary
-
-| Goal | What you need |
-|---|---|
-| Web sign-in only | Firebase `config.js` + Google enabled in Auth (auto client is enough) |
-| Answer forwarding | OAuth client ID + secret + application sender refresh token in Cloud Functions secrets |
-
-### Finding your web app config
-
-These values are **not** in Google Cloud Console. They are in the **Firebase** console:
-
-1. Open [Firebase console](https://console.firebase.google.com/) and select your project.
-2. In the left sidebar, next to **Project Overview** at the top, click the **gear icon** → **Project settings**.
-   - Direct pattern: `https://console.firebase.google.com/project/<your-project-id>/settings/general`
-3. Stay on the **General** tab.
-4. Scroll down to the **Your apps** section.
-5. If you see a **Web** app (`</>` icon), click it — the **Firebase SDK snippet** shows `apiKey`, `authDomain`, `projectId`, and the rest.
-6. If there is no web app yet, click **Add app** → choose **Web** (`</>`) → register the app (nickname is enough) → copy the `firebaseConfig` object.
-
-Paste those values into [`web/public/js/config.js`](../../web/public/js/config.js).
+After deploy, a campaign with answer forwarding enabled should send a notification from `GMAIL_SENDER_EMAIL` to the campaign owner. If it does not, see [Troubleshooting](#troubleshooting).
 
 ---
 
@@ -207,7 +159,6 @@ PYTHON_BIN=/opt/homebrew/bin/python3.13 ./scripts/setup-local.sh
 Set Cloud Functions secrets before deploying:
 
 ```bash
-# Gmail OAuth credentials (application sender for forwarding notifications)
 firebase functions:secrets:set GMAIL_CLIENT_ID
 firebase functions:secrets:set GMAIL_CLIENT_SECRET
 firebase functions:secrets:set GMAIL_REFRESH_TOKEN
@@ -263,7 +214,7 @@ The frontend is static HTML/CSS/JS in [`web/public/`](../../web/public/). It is 
 
 ### Configure Firebase for the web client
 
-Edit [`web/public/js/config.js`](../../web/public/js/config.js) with your project's web app config ([Finding your web app config](#finding-your-web-app-config)):
+Edit [`web/public/js/config.js`](../../web/public/js/config.js) with your project's web app config (see [Enable authentication](#enable-authentication)):
 
 ```javascript
 window.FIREBASE_CONFIG = {
@@ -276,7 +227,7 @@ window.FIREBASE_CONFIG = {
 };
 ```
 
-If you have not added a web app yet, follow step 6 in [Finding your web app config](#finding-your-web-app-config).
+If you have not added a web app yet, follow step 3 in [Enable authentication](#enable-authentication).
 
 ### Deploy hosting only
 
@@ -308,11 +259,7 @@ npm install -g @google/clasp
 clasp login
 ```
 
-> **clasp 3.x:** Several commands were renamed from clasp 2.x. Use `clasp open-script` (not `clasp open`), `clasp create-script` (not `clasp create`), etc. Run `clasp --help` to list commands.
-
 ### Create the Apps Script project
-
-**Option A — link via the Apps Script console (recommended):**
 
 1. Create a new **standalone** project at [script.google.com](https://script.google.com/).
 2. Open **Project settings** and copy the **Script ID**.
@@ -331,17 +278,6 @@ clasp login
 cd gmail-addon
 clasp push
 ```
-
-**Option B — create via clasp (empty directory only):**
-
-Only use this if you are **not** starting from this repo’s `gmail-addon/` files (clasp will refuse to run if `.clasp.json` already exists):
-
-```bash
-mkdir my-1cr-addon && cd my-1cr-addon
-clasp create-script --type standalone --title "One-click Response"
-```
-
-Then copy in `appsscript.json` and `Code.gs` from this repository’s `gmail-addon/` folder and run `clasp push`.
 
 ### Configure the add-on
 
@@ -387,7 +323,9 @@ Your backend must know that ID so it can verify tokens are from **your** add-on,
 | **You self-host** (this repo) | You, the operator, during install | One per Apps Script project you create |
 | **Marketplace / shared add-on** | The publisher, once | One for all users of that published add-on |
 
-If you create a **new** Apps Script project (new Script ID), Google creates a **new** OAuth client → you must update the backend secret to match.
+**Note:** this is a different OAuth 2.0 client than the Firebase application client. It's a client that is specifically created for the add-on.
+
+If you create a new Apps Script project (new Script ID), Google creates a **new** OAuth client → you must update the backend secret to match.
 
 #### Setup steps (do this once after `clasp push`)
 
@@ -408,11 +346,6 @@ If you create a **new** Apps Script project (new Script ID), Google creates a **
 
 6. Verify: open the add-on in Gmail compose — campaigns should load (after **Connect to backend** if prompted for external requests).
 
-> **Do not** pick a client ID from GCP Console → Credentials unless you are certain it belongs to **this** Apps Script project. The console lists many OAuth clients (Firebase web, Gmail forwarding, etc.). The `logOAuthClientId()` output is authoritative for your add-on.
-
-#### Why this is not configured in the add-on
-
-The add-on only **sends** the token. The backend **validates** it before returning your Firestore data. Putting the client ID in the add-on would not help — an attacker could skip the add-on and call your API directly. The secret tells the server which `aud` to expect when verifying Google's signature.
 
 ### Using the add-on in Gmail
 
@@ -452,25 +385,6 @@ For personal or workspace use:
 - Use **Test deployments** and install via the Gmail add-on test install link, or
 - Publish through the [Google Workspace Marketplace](https://developers.google.com/workspace/marketplace) for broader distribution.
 
-### Add-on auth note
-
-See [Link add-on to backend](#link-add-on-to-backend-one-time-operator-step) for the full one-time setup. Summary:
-
-| Client | What it sends | What the backend does |
-|---|---|---|
-| Web settings | Firebase ID token (from Google sign-in in the browser) | Verifies with Firebase Auth |
-| Gmail add-on | Google OIDC token from `ScriptApp.getIdentityToken()` | Verifies Google's signature and checks the token's `aud` claim |
-
-The add-on and web settings use different token types. Signing in on the web does not authenticate the Gmail add-on. Use the same Google account in both.
-
-**Operator checklist (not shown to end users):**
-
-1. Run `logOAuthClientId()` in the Apps Script editor after the first test deployment.
-2. Set `APPS_SCRIPT_OAUTH_CLIENT_ID` to the logged `aud` value.
-3. Redeploy functions (`./scripts/deploy.sh`).
-
-The helper function lives in [`gmail-addon/Code.gs`](../../gmail-addon/Code.gs). Error-card debug output is for troubleshooting only — normal install uses the steps above.
-
 ---
 
 ## 6. Post-install checklist
@@ -491,6 +405,9 @@ The helper function lives in [`gmail-addon/Code.gs`](../../gmail-addon/Code.gs).
 | Symptom | Likely cause |
 |---|---|
 | `401` on API calls from settings | Firebase config in `config.js` does not match project; user not signed in |
+| Google sign-in fails or popup closes immediately | `config.js` values do not match Firebase **Project settings** → **Your apps** → Web app; domain not listed under **Authentication** → **Authorized domains** |
+| OAuth Playground: no `refresh_token` in response | Revoke the app at [Google Account → Third-party access](https://myaccount.google.com/permissions) and repeat; ensure sender is a **Test user** on the OAuth consent screen |
+| Gmail refresh token stops working after ~7 days | OAuth consent screen is in **Testing** mode — publish it or keep the sender on the test-user list |
 | Functions deploy: "Failed to find location of Firebase Functions SDK" | Venv was created with wrong Python version. Run `./scripts/setup-local.sh` (uses Python 3.13), then redeploy |
 | `Firestore database configuration is missing in firebase.json` | Add `database` and `location` under `firestore` in `firebase.json` (included in this repo; set `location` to your Firestore region) |
 | Response links point to `localhost` | `HOST_URL` not set for Cloud Functions — add to `functions/.env` and redeploy |
