@@ -55,3 +55,7 @@ There will be no option to update the recipients list after a change. To accommo
 ## Insertion point
 
 The add-on inserts the response buttons at the current cursor position.
+
+## Order
+
+The buttons must be inserted in the order defined in the campaign.

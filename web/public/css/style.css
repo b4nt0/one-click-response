@@ -196,6 +196,40 @@ th {
   border-bottom: none;
 }
 
+.button-row {
+  gap: 12px;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--color-muted);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.button-row.dragging {
+  opacity: 0.5;
+}
+
+.button-row.drop-target {
+  background: var(--color-bg-subtle, rgba(0, 0, 0, 0.04));
+}
+
+.button-text {
+  flex: 1;
+}
+
+.button-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.875rem;
+}
+
 .actions {
   display: flex;
   gap: 8px;

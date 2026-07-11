@@ -36,9 +36,9 @@ def main():
         )
     )
 
-    for text in ["Yes", "No", "Maybe"]:
+    for order, text in enumerate(["Yes", "No", "Maybe"]):
         ResponseButtonRepository().create(
-            ResponseButton(id=str(uuid.uuid4()), text=text, campaign_id=campaign.id)
+            ResponseButton(id=str(uuid.uuid4()), text=text, campaign_id=campaign.id, order=order)
         )
 
     print(f"Seeded user={user.id} campaign={campaign.id}")

@@ -24,6 +24,7 @@ Properties of a Response button:
 - Text
 - Campaign (campaign reference, optional)
 - Owner (user reference, optional)
+- Order (buttons are sorted in ascending order by this field)
 
 One and only one of the two - Campaign or Owner must be specified.
 
@@ -75,6 +76,7 @@ erDiagram
         string text
         uuid campaign_id
         uuid user_id
+        int order
     }
     RESPONSE {
         uuid id

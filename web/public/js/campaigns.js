@@ -1,5 +1,7 @@
 (function () {
   let currentCampaignId = null;
+  let currentButtons = [];
+  let draggedButtonId = null;
 
   function showView(view) {
     ["list-view", "detail-view", "create-view"].forEach((id) => {
@@ -45,8 +47,8 @@
     showView("detail-view");
   }
 
-  async function loadButtons(campaignId) {
-    const buttons = await OneClickAPI.get(`/api/campaigns/${campaignId}/buttons`);
+  function renderButtons(buttons) {
+    currentButtons = buttons;
     const list = document.getElementById("buttons-list");
     if (!buttons.length) {
       list.innerHTML = '<p class="muted">No buttons yet.</p>';
@@ -54,13 +56,26 @@
     }
     list.innerHTML = buttons
       .map(
-        (b) => `
-      <div class="list-item">
-        <span>${escapeHtml(b.text)}</span>
-        <button class="btn btn-danger btn-sm" data-delete="${b.id}">Delete</button>
+        (b, index) => `
+      <div class="list-item button-row" data-button-id="${b.id}" draggable="true">
+        <span class="drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span>
+        <span class="button-text">${escapeHtml(b.text)}</span>
+        <div class="button-actions">
+          <button type="button" class="btn btn-secondary btn-sm" data-move-up="${b.id}" ${
+          index === 0 ? "disabled" : ""
+        } title="Move up">↑</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-move-down="${b.id}" ${
+          index === buttons.length - 1 ? "disabled" : ""
+        } title="Move down">↓</button>
+          <button type="button" class="btn btn-danger btn-sm" data-delete="${b.id}">Delete</button>
+        </div>
       </div>`
       )
       .join("");
+    bindButtonRowEvents(list);
+  }
+
+  function bindButtonRowEvents(list) {
     list.querySelectorAll("[data-delete]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         if (!confirm("Delete this button?")) return;
@@ -68,6 +83,84 @@
         await loadButtons(currentCampaignId);
       });
     });
+
+    list.querySelectorAll("[data-move-up]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await moveButton(btn.dataset.moveUp, -1);
+      });
+    });
+
+    list.querySelectorAll("[data-move-down]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await moveButton(btn.dataset.moveDown, 1);
+      });
+    });
+
+    list.querySelectorAll(".button-row").forEach((row) => {
+      row.addEventListener("dragstart", (e) => {
+        draggedButtonId = row.dataset.buttonId;
+        row.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", draggedButtonId);
+      });
+
+      row.addEventListener("dragend", () => {
+        row.classList.remove("dragging");
+        list.querySelectorAll(".drop-target").forEach((el) => el.classList.remove("drop-target"));
+        draggedButtonId = null;
+      });
+
+      row.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (row.dataset.buttonId !== draggedButtonId) {
+          row.classList.add("drop-target");
+        }
+      });
+
+      row.addEventListener("dragleave", () => {
+        row.classList.remove("drop-target");
+      });
+
+      row.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        row.classList.remove("drop-target");
+        const sourceId = e.dataTransfer.getData("text/plain");
+        const targetId = row.dataset.buttonId;
+        if (!sourceId || sourceId === targetId) return;
+        const ids = currentButtons.map((b) => b.id);
+        const sourceIndex = ids.indexOf(sourceId);
+        const targetIndex = ids.indexOf(targetId);
+        if (sourceIndex === -1 || targetIndex === -1) return;
+        ids.splice(sourceIndex, 1);
+        ids.splice(targetIndex, 0, sourceId);
+        await reorderButtons(ids);
+      });
+    });
+  }
+
+  async function moveButton(buttonId, direction) {
+    const ids = currentButtons.map((b) => b.id);
+    const index = ids.indexOf(buttonId);
+    if (index === -1) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= ids.length) return;
+    ids.splice(index, 1);
+    ids.splice(newIndex, 0, buttonId);
+    await reorderButtons(ids);
+  }
+
+  async function reorderButtons(buttonIds) {
+    const buttons = await OneClickAPI.put(
+      `/api/campaigns/${currentCampaignId}/buttons/reorder`,
+      { button_ids: buttonIds }
+    );
+    renderButtons(buttons);
+  }
+
+  async function loadButtons(campaignId) {
+    const buttons = await OneClickAPI.get(`/api/campaigns/${campaignId}/buttons`);
+    renderButtons(buttons);
   }
 
   async function loadResponses(campaignId) {

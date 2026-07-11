@@ -162,6 +162,18 @@ def delete_campaign(user, campaign_id):
         return _json_error(exc)
 
 
+@app.route("/api/campaigns/<campaign_id>/buttons/reorder", methods=["PUT"])
+@require_auth
+def reorder_campaign_buttons(user, campaign_id):
+    try:
+        body = request.get_json(silent=True) or {}
+        button_ids = body.get("button_ids", [])
+        buttons = campaign_service.reorder_buttons(user.id, campaign_id, button_ids)
+        return jsonify([_button_to_dict(b) for b in buttons])
+    except AppError as exc:
+        return _json_error(exc)
+
+
 @app.route("/api/campaigns/<campaign_id>/buttons", methods=["GET"])
 @require_auth
 def list_buttons(user, campaign_id):
@@ -278,6 +290,7 @@ def _button_to_dict(button):
         "text": button.text,
         "campaign_id": button.campaign_id,
         "user_id": button.user_id,
+        "order": button.order,
     }
 
 

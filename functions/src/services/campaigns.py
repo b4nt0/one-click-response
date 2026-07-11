@@ -86,18 +86,31 @@ class CampaignService:
     ) -> ResponseButton:
         if campaign_id:
             self.get_campaign(user_id, campaign_id)
+            order = self.button_repo.next_order_for_campaign(campaign_id)
             button = ResponseButton(
                 id=str(uuid.uuid4()),
                 text=text,
                 campaign_id=campaign_id,
+                order=order,
             )
         else:
+            order = self.button_repo.next_order_for_user(user_id)
             button = ResponseButton(
                 id=str(uuid.uuid4()),
                 text=text,
                 user_id=user_id,
+                order=order,
             )
         return self.button_repo.create(button)
+
+    def reorder_buttons(
+        self,
+        user_id: str,
+        campaign_id: str,
+        button_ids: list[str],
+    ) -> list[ResponseButton]:
+        self.get_campaign(user_id, campaign_id)
+        return self.button_repo.reorder(campaign_id, button_ids)
 
     def update_button(
         self,

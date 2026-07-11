@@ -47,14 +47,14 @@ def mock_campaign():
 def mock_button():
     from src.models import ResponseButton
 
-    return ResponseButton(id="btn-1", text="Yes", campaign_id="camp-1")
+    return ResponseButton(id="btn-1", text="Yes", campaign_id="camp-1", order=0)
 
 
 @pytest.fixture
 def mock_loose_button():
     from src.models import ResponseButton
 
-    return ResponseButton(id="btn-loose", text="Maybe", user_id="user-1")
+    return ResponseButton(id="btn-loose", text="Maybe", user_id="user-1", order=0)
 
 
 @pytest.fixture

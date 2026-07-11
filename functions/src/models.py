@@ -61,6 +61,7 @@ class ResponseButton:
     text: str
     campaign_id: str | None = None
     user_id: str | None = None
+    order: int = 0
 
     @classmethod
     def from_firestore(cls, doc_id: str, data: dict[str, Any]) -> ResponseButton:
@@ -69,10 +70,11 @@ class ResponseButton:
             text=data["text"],
             campaign_id=data.get("campaign_id"),
             user_id=data.get("user_id"),
+            order=data.get("order", 0),
         )
 
     def to_firestore(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"text": self.text}
+        result: dict[str, Any] = {"text": self.text, "order": self.order}
         if self.campaign_id is not None:
             result["campaign_id"] = self.campaign_id
         if self.user_id is not None:
