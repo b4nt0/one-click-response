@@ -8,6 +8,12 @@
 
 var API_BASE_URL = PropertiesService.getScriptProperties().getProperty('API_BASE_URL') || 'http://localhost:5000';
 
+/** Brand title for read-message sidebar and in-product references. */
+var ADDON_TITLE = 'One-click Response';
+
+/** Compose sidebar card title (no separate section header). */
+var COMPOSE_CARD_TITLE = 'Add response buttons';
+
 /** Sentinel campaign id for comma-separated in-place button captions. */
 var IN_PLACE_CAMPAIGN_ID = '__in_place__';
 
@@ -52,13 +58,13 @@ function onComposeTrigger(e) {
  */
 function onMessageOpen(e) {
   var card = CardService.newCardBuilder()
-    .setHeader(CardService.newCardHeader().setTitle('One-click Response'))
+    .setHeader(CardService.newCardHeader().setTitle(ADDON_TITLE))
     .addSection(
       CardService.newCardSection()
         .addWidget(
           CardService.newTextParagraph().setText(
             'To insert response buttons, <b>compose a new email</b> and click the ' +
-            '<b>One-click Response</b> icon in the compose toolbar (bottom of the draft window).'
+            '<b>' + ADDON_TITLE + '</b> icon in the compose toolbar (bottom of the draft window).'
           )
         )
         .addWidget(
@@ -88,7 +94,7 @@ function buildComposeCard(e) {
 
   if (!draft && !recipients.length) {
     return CardService.newCardBuilder()
-      .setHeader(CardService.newCardHeader().setTitle('One-click Response'))
+      .setHeader(CardService.newCardHeader().setTitle(COMPOSE_CARD_TITLE))
       .addSection(
         CardService.newCardSection().addWidget(
           CardService.newTextParagraph().setText(
@@ -101,23 +107,13 @@ function buildComposeCard(e) {
   }
 
   var card = CardService.newCardBuilder()
-    .setHeader(CardService.newCardHeader().setTitle('One-click Response'));
+    .setHeader(CardService.newCardHeader().setTitle(COMPOSE_CARD_TITLE));
 
-  var section = CardService.newCardSection()
-    .setHeader('Add response buttons');
-
-  section.addWidget(
-    CardService.newTextParagraph().setText(
-      '<b>Warning:</b> Response buttons cannot be copied to other emails. ' +
-      'Insert a new block for each email so recipients and identifiers stay correct.'
-    )
-  );
-
-  section.addWidget(
-    CardService.newTextParagraph().setText(
-      '<a href="' + API_BASE_URL + '/settings/">Manage campaigns in settings</a>'
-    )
-  );
+  var section = CardService.newCardSection();
+  var composeRefreshParams = {
+    subject: subject,
+    recipients: recipients.join(','),
+  };
 
   if (recipients.length === 0) {
     section.addWidget(
@@ -136,18 +132,15 @@ function buildComposeCard(e) {
     var campaignInput = buildCampaignDropdown(selectedCampaignId);
     campaignInput.setOnChangeAction(
       CardService.newAction()
-        .setFunctionName('onCampaignSelected')
-        .setParameters({
-          subject: subject,
-          recipients: recipients.join(','),
-        })
+        .setFunctionName('onComposeCardRefresh')
+        .setParameters(composeRefreshParams)
     );
 
     var backendAuthUrl = getBackendAuthorizationUrl();
     if (backendAuthUrl) {
       section.addWidget(
         CardService.newTextParagraph().setText(
-          'Allow the add-on to contact the One-click Response backend before loading campaigns.'
+          'Allow the add-on to contact the ' + ADDON_TITLE + ' backend before loading campaigns.'
         )
       );
       section.addWidget(buildBackendAuthorizationButton(backendAuthUrl));
@@ -181,6 +174,10 @@ function buildComposeCard(e) {
 
       section.addWidget(campaignInput);
 
+      if (selectedCampaignId === '') {
+        section.addWidget(buildManageCampaignsLink());
+      }
+
       if (selectedCampaignId === IN_PLACE_CAMPAIGN_ID) {
         section.addWidget(
           CardService.newTextInput()
@@ -192,13 +189,20 @@ function buildComposeCard(e) {
       }
     }
 
-    section.addWidget(
-      CardService.newSelectionInput()
-        .setType(CardService.SelectionInputType.CHECK_BOX)
-        .setTitle('Confirm recipients')
-        .setFieldName('confirmRecipients')
-        .addItem('I confirm these recipients are correct', 'yes', false)
+    var confirmChecked = isConfirmRecipientsChecked(e.formInput);
+    var confirmInput = CardService.newSelectionInput()
+      .setType(CardService.SelectionInputType.CHECK_BOX)
+      .setTitle('Confirm recipients')
+      .setFieldName('confirmRecipients')
+      .addItem('I confirm these recipients are correct', 'yes', confirmChecked);
+    confirmInput.setOnChangeAction(
+      CardService.newAction()
+        .setFunctionName('onComposeCardRefresh')
+        .setParameters(composeRefreshParams)
     );
+    section.addWidget(confirmInput);
+
+    addPostConfirmWarnings(section, recipients, e.formInput);
 
     section.addWidget(
       CardService.newTextButton()
@@ -219,12 +223,44 @@ function buildComposeCard(e) {
 }
 
 /**
- * Rebuild compose card when campaign selection changes (shows in-place caption field).
+ * Rebuild compose card when form inputs change (campaign, confirm checkbox, etc.).
  */
-function onCampaignSelected(e) {
+function onComposeCardRefresh(e) {
   return CardService.newActionResponseBuilder()
     .setNavigation(CardService.newNavigation().updateCard(buildComposeCard(e)))
     .build();
+}
+
+function buildManageCampaignsLink() {
+  return CardService.newTextParagraph().setText(
+    '<a href="' + API_BASE_URL + '/settings/">Manage campaigns in settings</a>'
+  );
+}
+
+function isConfirmRecipientsChecked(formInput) {
+  if (!formInput || !formInput.confirmRecipients) {
+    return false;
+  }
+  var confirm = formInput.confirmRecipients;
+  return (typeof confirm === 'string' ? confirm : confirm.join(',')).indexOf('yes') !== -1;
+}
+
+function addPostConfirmWarnings(section, recipients, formInput) {
+  if (recipients.length > 1) {
+    section.addWidget(
+      CardService.newTextParagraph().setText(
+        'You are sending to many recipients. They can only give one answer per group, ' +
+        'only the first answer will count.'
+      )
+    );
+  }
+  if (isConfirmRecipientsChecked(formInput)) {
+    section.addWidget(
+      CardService.newTextParagraph().setText(
+        "Don't copy the response buttons to other emails."
+      )
+    );
+  }
 }
 
 function buildCampaignDropdown(selectedCampaignId) {
@@ -381,7 +417,7 @@ function requireBackendAccessOrThrow() {
   }
   CardService.newAuthorizationException()
     .setAuthorizationUrl(authUrl)
-    .setResourceDisplayName('One-click Response backend')
+    .setResourceDisplayName(ADDON_TITLE + ' backend')
     .throwException();
 }
 
