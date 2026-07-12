@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual mode — 1CR</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Manual mode</h1>
+    <p class="muted">Generate response buttons to copy into your email when the Gmail add-on is unavailable.</p>
+
+    <div id="auth-gate" class="card">
+      <p>Please <a href="/settings/">sign in</a> to generate response buttons.</p>
+    </div>
+
+    <div id="main" class="hidden">
+      <nav class="nav">
+        <a href="/settings/campaigns.html">Campaigns</a>
+        <a href="/settings/manual.html" class="active">Manual mode</a>
+        <a href="/settings/profile.html">Profile</a>
+        <a href="#" id="sign-out-link">Sign out</a>
+      </nav>
+
+      <div class="card">
+        <h2>Generate response block</h2>
+
+        <div id="form-error" class="alert alert-error hidden"></div>
+
+        <p>
+          This is a <strong>fallback mode</strong> for when the <strong>Gmail add-on</strong> is not available. You can generate a response block here and copy it to your email.
+        </p>
+
+        <form id="generate-form">
+          <div class="form-group">
+            <label for="recipients">Recipients</label>
+            <textarea id="recipients" rows="3" placeholder="one@example.com, two@example.com" required></textarea>
+            <p class="muted" style="margin-top:4px;margin-bottom:0;">Comma- or newline-separated email addresses.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="subject">Email subject</label>
+            <input type="text" id="subject" placeholder="Optional">
+          </div>
+
+          <div class="form-group">
+            <label for="campaign-id">Campaign</label>
+            <select id="campaign-id" required>
+              <option value="">— Select campaign —</option>
+              <option value="__in_place__">— Add buttons in-place —</option>
+            </select>
+          </div>
+
+          <p id="manage-campaigns-link" class="muted">
+            <a href="/settings/campaigns.html">Manage campaigns in settings</a>
+          </p>
+
+          <div id="in-place-group" class="form-group hidden">
+            <label for="button-captions">Button captions</label>
+            <input type="text" id="button-captions" placeholder="Comma-separated, e.g. Yes, No, Maybe">
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="confirm-recipients">
+              I confirm these recipients are correct
+            </label>
+          </div>
+
+          <p id="multi-recipient-warning" class="muted hidden">
+            You are sending to many recipients. They can only give one answer per group,
+            only the first answer will count.
+          </p>
+
+          <p id="dont-copy-warning" class="muted hidden">
+            Don't copy the response buttons to other emails.
+          </p>
+
+          <button type="submit" id="generate-btn" class="btn btn-primary" disabled>Generate</button>
+        </form>
+      </div>
+
+      <div id="output-section" class="card hidden" style="margin-top:16px;">
+        <h2>Response block</h2>
+        <p class="muted">Copy the block below and paste it into your email. If recipients or subject change, generate again.</p>
+
+        <div id="html-preview" class="card" style="margin-bottom:16px;"></div>
+
+        <div class="form-group">
+          <label for="html-output">Raw HTML</label>
+          <textarea id="html-output" rows="6" readonly></textarea>
+        </div>
+
+        <div class="actions">
+          <button type="button" id="copy-btn" class="btn btn-primary">Copy to clipboard</button>
+          <span id="copy-status" class="muted hidden"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/manual.js"></script>
+</body>
+</html>
