@@ -89,14 +89,10 @@ def _safe_token_claims(token: str) -> dict[str, Any]:
     }
 
 
-def _configured_audience_candidates(token: str) -> list[dict[str, str]]:
-    """Ordered OAuth client ID candidates with their configuration source."""
-    token_aud = _decode_jwt_payload_unverified(token).get("aud")
-    token_aud_str = token_aud if isinstance(token_aud, str) and token_aud else ""
-
+def _configured_audience_candidates() -> list[dict[str, str]]:
+    """Ordered OAuth client ID candidates from trusted server configuration only."""
     raw_candidates = [
         ("APPS_SCRIPT_OAUTH_CLIENT_ID", os.environ.get("APPS_SCRIPT_OAUTH_CLIENT_ID", "")),
-        ("token_aud_claim", token_aud_str),
         ("GMAIL_CLIENT_ID", os.environ.get("GMAIL_CLIENT_ID", "")),
     ]
 
@@ -153,7 +149,7 @@ def verify_google_identity_token(token: str, audience: str) -> dict:
 def inspect_identity_token(token: str) -> dict[str, Any]:
     """Build a full auth diagnostic report (safe to return to the token holder)."""
     claims = _safe_token_claims(token)
-    candidates = _configured_audience_candidates(token)
+    candidates = _configured_audience_candidates()
 
     firebase_attempt: dict[str, Any] = {"attempted": True}
     try:
@@ -251,7 +247,7 @@ def resolve_auth_user(authorization_header: str | None) -> dict:
     except Exception as exc:
         logger.info("Not a Firebase ID token (%s: %s); trying Google identity token", type(exc).__name__, exc)
 
-    candidates = _configured_audience_candidates(token)
+    candidates = _configured_audience_candidates()
     if not candidates:
         debug_report = inspect_identity_token(token)
         logger.error("No OAuth audience candidates configured for add-on auth")

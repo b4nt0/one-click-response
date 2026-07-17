@@ -60,23 +60,28 @@ def test_resolve_auth_user_firebase_token(
 @patch("src.auth.try_verify_google_identity_token")
 @patch("src.auth.auth.verify_id_token")
 @patch("src.auth.init_firebase")
-@patch.dict("os.environ", {"APPS_SCRIPT_OAUTH_CLIENT_ID": "wrong-client.apps.googleusercontent.com"})
-def test_resolve_auth_user_tries_token_aud_after_configured_client_fails(
+@patch.dict(
+    "os.environ",
+    {
+        "APPS_SCRIPT_OAUTH_CLIENT_ID": "wrong-client.apps.googleusercontent.com",
+        "GMAIL_CLIENT_ID": "",
+    },
+)
+def test_resolve_auth_user_rejects_token_aud_not_in_configured_clients(
     mock_init, mock_firebase_verify, mock_try_verify
 ):
-    token = _make_jwt({"aud": "actual-client.apps.googleusercontent.com", "email": "user@example.com"})
+    """Token aud must not be trusted as a verification audience fallback."""
+    token = _make_jwt({"aud": "attacker-client.apps.googleusercontent.com", "email": "user@example.com"})
     mock_firebase_verify.side_effect = ValueError("not a firebase token")
-    mock_try_verify.side_effect = [
-        (None, "Wrong audience"),
-        ({"email": "user@example.com", "sub": "google-sub"}, None),
-    ]
+    mock_try_verify.return_value = (None, "Wrong audience")
 
-    with patch("src.auth._firebase_user_for_email") as mock_get_user:
-        mock_get_user.return_value = MagicMock(uid="firebase-uid")
-        result = resolve_auth_user(f"Bearer {token}")
+    with pytest.raises(AppError) as exc:
+        resolve_auth_user(f"Bearer {token}")
 
-    assert result == {"uid": "firebase-uid", "email": "user@example.com"}
-    assert mock_try_verify.call_count == 2
+    assert exc.value.status_code == 401
+    audiences_tried = [call.args[1] for call in mock_try_verify.call_args_list]
+    assert "attacker-client.apps.googleusercontent.com" not in audiences_tried
+    assert all(audience == "wrong-client.apps.googleusercontent.com" for audience in audiences_tried)
 
 
 @patch("src.auth._firebase_user_for_email")
