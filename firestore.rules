@@ -10,6 +10,16 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function ownsCampaign(campaignId) {
+      return get(/databases/$(database)/documents/campaigns/$(campaignId)).data.user_id
+        == request.auth.uid;
+    }
+
+    function canAccessButton(data) {
+      return (data.campaign_id != null && ownsCampaign(data.campaign_id))
+        || (data.campaign_id == null && data.user_id == request.auth.uid);
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow write: if false;
@@ -23,14 +33,11 @@ service cloud.firestore {
     }
 
     match /response_buttons/{buttonId} {
-      allow read, create, update, delete: if isSignedIn()
-        && (
-          (resource == null && request.resource.data.user_id == request.auth.uid)
-          || (resource != null && resource.data.user_id == request.auth.uid)
-          || (resource == null && request.resource.data.campaign_id != null)
-          || (resource != null && resource.data.campaign_id != null
-              && get(/databases/$(database)/documents/campaigns/$(resource.data.campaign_id)).data.user_id == request.auth.uid)
-        );
+      allow read, delete: if isSignedIn() && canAccessButton(resource.data);
+      allow create: if isSignedIn() && canAccessButton(request.resource.data);
+      allow update: if isSignedIn()
+        && canAccessButton(resource.data)
+        && canAccessButton(request.resource.data);
     }
 
     match /responses/{responseId} {
