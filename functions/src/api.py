@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import json
 from functools import wraps
 
-from flask import Flask, Request, jsonify, request
+from flask import Flask, jsonify, request
 
 from src import config
-from src.auth import inspect_authorization_header, resolve_auth_user, verify_google_identity_token, verify_id_token
+from src.auth import (
+    inspect_authorization_header,
+    resolve_auth_user,
+    verify_google_identity_token,
+)
 from src.models import AppError, DuplicateError
 from src.services.campaigns import CampaignService
 from src.services.links import LinksService
@@ -246,7 +249,7 @@ def list_responses(user, campaign_id):
 @app.route("/api/users/rotate-key", methods=["POST"])
 @require_auth
 def rotate_key(user):
-    new_key = user_service.rotate_key(user.id)
+    user_service.rotate_key(user.id)
     return jsonify({"encryption_key_rotated": True, "message": "Encryption key rotated."})
 
 

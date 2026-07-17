@@ -123,8 +123,8 @@ def verify_id_token(authorization_header: str | None) -> dict:
 
 def try_verify_google_identity_token(token: str, audience: str) -> tuple[dict | None, str | None]:
     """Attempt Google OIDC verification; return (claims, error_message)."""
-    from google.oauth2 import id_token as google_id_token
     from google.auth.transport import requests as google_requests
+    from google.oauth2 import id_token as google_id_token
 
     try:
         claims = google_id_token.verify_oauth2_token(

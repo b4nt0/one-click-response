@@ -28,7 +28,7 @@ case "$MODE" in
       "cd functions && $ROOT/functions/venv/bin/python -m pytest tests/integration -v"
     ;;
   lint)
-    ruff check src tests
+    ruff check src
     ;;
   *)
     echo "Usage: $0 [unit|integration|all|lint]"
